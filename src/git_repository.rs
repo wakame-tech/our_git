@@ -2,7 +2,7 @@ use crate::git_config::GitConfig;
 use anyhow::Result;
 use std::fs::{self, OpenOptions};
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 fn touch_file(file_path: &PathBuf, content: &[u8]) -> Result<()> {
     let mut f = OpenOptions::new()
@@ -51,6 +51,17 @@ pub fn repo_create(path: &PathBuf) -> Result<GitRepository> {
     let conf = GitConfig::default();
     conf.write(&repo.gitdir.join("config"))?;
     Ok(repo)
+}
+
+pub fn repo_find(path: &Path) -> Result<GitRepository> {
+    let mut current = Some(path);
+    while let Some(path) = current {
+        if path.join(".git").is_dir() {
+            return GitRepository::new(path.to_path_buf(), None);
+        }
+        current = path.parent();
+    }
+    anyhow::bail!("git directory not found");
 }
 
 pub struct GitRepository {
