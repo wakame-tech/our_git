@@ -106,16 +106,17 @@ pub fn object_read(gitdir: &PathBuf, sha: &str) -> Result<GitObject> {
     let path = gitdir.join("objects").join(&sha[..2]).join(&sha[2..]);
     anyhow::ensure!(path.is_file(), "{} is not a file", path.display());
 
+    dbg!(&path);
     let f = File::open(path)?;
     let mut bin = Vec::new();
-    ZlibDecoder::new(f).read(&mut bin)?;
+    ZlibDecoder::new(f).read_to_end(&mut bin)?;
 
     let space_at = bin.iter().position(|&b| b == b' ').unwrap();
     let header = String::from_utf8(bin[..space_at].to_vec())?;
     let kind = GitObjectKind::from_str(&header).ok_or(anyhow::anyhow!("Invalid header"))?;
-    let null_at = bin.iter().skip(space_at).position(|&b| b == 0).unwrap();
-    let size: usize = String::from_utf8(bin[space_at..null_at].to_vec())?.parse()?;
-    let content = bin[null_at..].to_vec();
+    let null_at = bin.iter().position(|&b| b == 0).unwrap();
+    let size: usize = String::from_utf8(bin[space_at + 1..null_at].to_vec())?.parse()?;
+    let content = bin[null_at + 1..].to_vec();
     anyhow::ensure!(size == content.len(), "Size mismatch");
     Ok(GitObject {
         kind,
