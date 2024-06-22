@@ -65,8 +65,8 @@ pub fn repo_find(path: &Path) -> Result<GitRepository> {
 }
 
 pub struct GitRepository {
-    worktree: PathBuf,
-    gitdir: PathBuf,
+    pub worktree: PathBuf,
+    pub gitdir: PathBuf,
 }
 
 impl GitRepository {

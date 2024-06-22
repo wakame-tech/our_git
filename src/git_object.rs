@@ -5,14 +5,23 @@ use std::{
     fs::{self, File},
     io::{Read, Write},
     path::PathBuf,
+    str::FromStr,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum GitObjectKind {
     Blob,
     Commit,
     Tag,
     Tree,
+}
+
+impl FromStr for GitObjectKind {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<GitObjectKind, Self::Err> {
+        GitObjectKind::from_str(s).ok_or(anyhow::anyhow!("Invalid header"))
+    }
 }
 
 impl GitObjectKind {
@@ -44,7 +53,10 @@ pub struct GitObject {
 }
 
 pub fn serialize_object(obj: &GitObject) -> Vec<u8> {
-    Vec::new()
+    match obj.kind {
+        GitObjectKind::Blob => obj.content.clone(),
+        _ => todo!(),
+    }
 }
 
 pub fn deserialize_object(data: &[u8]) -> GitObject {
@@ -84,7 +96,7 @@ pub fn object_write(gitdir: &PathBuf, obj: &GitObject) -> Result<String> {
         data,
     ]
     .concat();
-    let sha = sha1::Sha1::digest(&result);
+    let sha = Sha1::digest(&result);
     let sha = hex::encode(sha);
     let path = gitdir.join("objects").join(&sha[..2]).join(&sha[2..]);
     fs::create_dir_all(path.parent().unwrap())?;

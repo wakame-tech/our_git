@@ -1,8 +1,11 @@
 use anyhow::Result;
+use cat_file::cat_file;
 use clap::Parser;
+use git_object::GitObjectKind;
 use init::cmd_init;
 use std::path::PathBuf;
 
+mod cat_file;
 mod git_config;
 mod git_object;
 mod git_repository;
@@ -11,7 +14,7 @@ mod init;
 #[derive(Debug, clap::Parser)]
 enum CLI {
     Add { path: PathBuf },
-    CatFile,
+    CatFile { kind: GitObjectKind, object: String },
     CheckIgnore,
     Checkout,
     Commit,
@@ -32,7 +35,7 @@ fn main() -> Result<()> {
     // -- はcargo runの引数とclapの引数を分けるために必要
     match CLI::try_parse()? {
         CLI::Add { .. } => todo!(),
-        CLI::CatFile => todo!(),
+        CLI::CatFile { kind, object } => cat_file(kind, object)?,
         CLI::CheckIgnore => todo!(),
         CLI::Checkout => todo!(),
         CLI::Commit => todo!(),
