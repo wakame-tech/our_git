@@ -1,7 +1,8 @@
 use anyhow::Result;
-use cat_file::cat_file;
+use cat_file::cmd_cat_file;
 use clap::Parser;
 use git_object::GitObjectKind;
+use hash_object::cmd_hash_object;
 use init::cmd_init;
 use std::path::PathBuf;
 
@@ -9,17 +10,32 @@ mod cat_file;
 mod git_config;
 mod git_object;
 mod git_repository;
+mod hash_object;
 mod init;
 
 #[derive(Debug, clap::Parser)]
 enum CLI {
-    Add { path: PathBuf },
-    CatFile { kind: GitObjectKind, object: String },
+    Add {
+        path: PathBuf,
+    },
+    CatFile {
+        kind: GitObjectKind,
+        object: String,
+    },
     CheckIgnore,
     Checkout,
     Commit,
-    HashObject,
-    Init { path: PathBuf },
+    HashObject {
+        // -w オプションとして使えるようにする
+        #[arg(short)]
+        write: bool,
+        #[arg(short)]
+        kind: GitObjectKind,
+        path: PathBuf,
+    },
+    Init {
+        path: PathBuf,
+    },
     Log,
     LsFiles,
     LsTree,
@@ -35,11 +51,11 @@ fn main() -> Result<()> {
     // -- はcargo runの引数とclapの引数を分けるために必要
     match CLI::try_parse()? {
         CLI::Add { .. } => todo!(),
-        CLI::CatFile { kind, object } => cat_file(kind, object)?,
+        CLI::CatFile { kind, object } => cmd_cat_file(kind, object)?,
         CLI::CheckIgnore => todo!(),
         CLI::Checkout => todo!(),
         CLI::Commit => todo!(),
-        CLI::HashObject => todo!(),
+        CLI::HashObject { write, kind, path } => cmd_hash_object(write, kind, path)?,
         CLI::Init { path } => cmd_init(path)?,
         CLI::Log => todo!(),
         CLI::LsFiles => todo!(),

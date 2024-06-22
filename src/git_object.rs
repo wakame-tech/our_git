@@ -47,9 +47,47 @@ impl GitObjectKind {
 
 #[derive(Debug)]
 pub struct GitObject {
-    kind: GitObjectKind,
-    size: usize,
-    content: Vec<u8>,
+    pub kind: GitObjectKind,
+    pub size: usize,
+    pub content: Vec<u8>,
+}
+
+impl GitObject {
+    pub fn hash(&self) -> Result<String> {
+        let data = serialize_object(self);
+        let result = [
+            self.kind.as_str().to_string().into_bytes(),
+            vec![b' '],
+            format!("{}", self.size).into_bytes(),
+            vec![0],
+            data,
+        ]
+        .concat();
+        let sha = Sha1::digest(&result);
+        let sha = hex::encode(sha);
+        Ok(sha)
+    }
+
+    pub fn write(&self, gitdir: &PathBuf) -> Result<()> {
+        let data = serialize_object(self);
+        let result = [
+            self.kind.as_str().to_string().into_bytes(),
+            vec![b' '],
+            format!("{}", self.size).into_bytes(),
+            vec![0],
+            data,
+        ]
+        .concat();
+        let sha = self.hash()?;
+        let path = gitdir.join("objects").join(&sha[..2]).join(&sha[2..]);
+        fs::create_dir_all(path.parent().unwrap())?;
+        if !path.exists() {
+            let f = File::create(&path)?;
+            let mut zipped = ZlibEncoder::new(f, Compression::default());
+            zipped.write_all(&result)?;
+        }
+        Ok(())
+    }
 }
 
 pub fn serialize_object(obj: &GitObject) -> Vec<u8> {
@@ -84,28 +122,6 @@ pub fn object_read(gitdir: &PathBuf, sha: &str) -> Result<GitObject> {
         size,
         content,
     })
-}
-
-pub fn object_write(gitdir: &PathBuf, obj: &GitObject) -> Result<String> {
-    let data = serialize_object(obj);
-    let result = [
-        obj.kind.as_str().to_string().into_bytes(),
-        vec![b' '],
-        format!("{}", obj.size).into_bytes(),
-        vec![0],
-        data,
-    ]
-    .concat();
-    let sha = Sha1::digest(&result);
-    let sha = hex::encode(sha);
-    let path = gitdir.join("objects").join(&sha[..2]).join(&sha[2..]);
-    fs::create_dir_all(path.parent().unwrap())?;
-    if !path.exists() {
-        let f = File::create(&path)?;
-        let mut zipped = ZlibEncoder::new(f, Compression::default());
-        zipped.write_all(&result)?;
-    }
-    Ok(sha)
 }
 
 #[cfg(test)]
