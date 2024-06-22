@@ -4,6 +4,7 @@ use init::cmd_init;
 use std::path::PathBuf;
 
 mod git_config;
+mod git_object;
 mod git_repository;
 mod init;
 
