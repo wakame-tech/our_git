@@ -11,10 +11,9 @@ pub fn cmd_hash_object(write: bool, kind: GitObjectKind, path: PathBuf) -> Resul
     let size = f.read_to_end(&mut content)?;
     let gitdir = repo_find(&path)?.gitdir;
 
-    let obj = GitObject {
-        kind,
-        size,
-        content,
+    let obj = match kind {
+        GitObjectKind::Blob => GitObject::Blob { size, content },
+        _ => todo!(),
     };
 
     if write {

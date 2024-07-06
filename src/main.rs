@@ -4,6 +4,7 @@ use clap::Parser;
 use git_object::GitObjectKind;
 use hash_object::cmd_hash_object;
 use init::cmd_init;
+use log::cmd_log;
 use std::path::PathBuf;
 
 mod cat_file;
@@ -12,6 +13,7 @@ mod git_object;
 mod git_repository;
 mod hash_object;
 mod init;
+mod log;
 
 #[derive(Debug, clap::Parser)]
 enum CLI {
@@ -36,7 +38,9 @@ enum CLI {
     Init {
         path: PathBuf,
     },
-    Log,
+    Log {
+        object: String,
+    },
     LsFiles,
     LsTree,
     RevParse,
@@ -57,7 +61,7 @@ fn main() -> Result<()> {
         CLI::Commit => todo!(),
         CLI::HashObject { write, kind, path } => cmd_hash_object(write, kind, path)?,
         CLI::Init { path } => cmd_init(path)?,
-        CLI::Log => todo!(),
+        CLI::Log { object } => cmd_log(object)?,
         CLI::LsFiles => todo!(),
         CLI::LsTree => todo!(),
         CLI::RevParse => todo!(),
@@ -76,3 +80,4 @@ fn main() -> Result<()> {
     // let now = chrono::Local::now();
     Ok(())
 }
+// e26f7edc2238102ee185f7c852a9c5356b938b75
