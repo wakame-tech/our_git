@@ -4,12 +4,12 @@ use indexmap::IndexMap;
 use sha1::{Digest, Sha1};
 use std::{
     fs::{self, File},
-    io::{Read, Write},
+    io::{Cursor, Read, Seek, SeekFrom, Write},
     path::PathBuf,
     str::FromStr,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GitObjectKind {
     Blob,
     Commit,
@@ -46,7 +46,7 @@ impl GitObjectKind {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum GitObject {
     Blob {
         size: usize,
@@ -63,7 +63,57 @@ pub enum GitObject {
         message: String,
     },
     Tag,
+    Tree(Vec<TreeOject>),
+}
+
+#[derive(Debug, Clone)]
+pub struct TreeOject {
+    pub file_type: FileType,
+    pub permission: String,
+    pub path: PathBuf,
+    pub sha: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FileType {
     Tree,
+    RegularFile,
+    SymbolicLink,
+    Submodule,
+}
+
+impl FileType {
+    pub fn as_str(&self) -> &str {
+        match self {
+            FileType::Tree => "04",
+            FileType::RegularFile => "10",
+            FileType::SymbolicLink => "12",
+            FileType::Submodule => "16",
+        }
+    }
+
+    pub fn kind(&self) -> GitObjectKind {
+        match self {
+            FileType::Tree => GitObjectKind::Tree,
+            FileType::RegularFile => GitObjectKind::Blob,
+            FileType::SymbolicLink => GitObjectKind::Blob,
+            FileType::Submodule => GitObjectKind::Commit,
+        }
+    }
+}
+
+impl TryFrom<&[u8]> for FileType {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &[u8]) -> Result<FileType> {
+        match value {
+            b"04" => Ok(FileType::Tree),
+            b"10" => Ok(FileType::RegularFile),
+            b"12" => Ok(FileType::SymbolicLink),
+            b"16" => Ok(FileType::Submodule),
+            _ => anyhow::bail!("Invalid file type {:#0x?}", value),
+        }
+    }
 }
 
 impl GitObject {
@@ -135,6 +185,7 @@ pub fn serialize_object(obj: &GitObject) -> Vec<u8> {
             ]);
             serialize_commit(dct).unwrap()
         }
+        GitObject::Tree(_) => tree_serialize(obj).unwrap(),
         _ => todo!(),
     }
 }
@@ -245,8 +296,83 @@ pub fn object_read(gitdir: &PathBuf, sha: &str) -> Result<GitObject> {
                 message: dct[&None][0].clone(),
             })
         }
-        _ => todo!(),
+        "tree" => tree_parse(&content),
+        _ => anyhow::bail!("Invalid header {}", header),
     }
+}
+
+pub fn tree_parse(data: &[u8]) -> Result<GitObject> {
+    let mut objects = Vec::new();
+    let mut cursor = Cursor::new(data);
+    while cursor.position() < data.len() as u64 {
+        let size = cursor
+            .get_ref()
+            .iter()
+            .skip(cursor.position() as usize)
+            .take_while(|&&b| b != 0x20)
+            .count();
+        let mut buf: Vec<u8> = vec![0; size];
+        cursor.read_exact(&mut buf)?;
+        let (file_type, permission) = if size == 5 {
+            let file_type = FileType::try_from([b'0', buf[0]].as_slice())?;
+            let permission = String::from_utf8(buf[2..5].to_vec())?;
+            (file_type, permission)
+        } else {
+            let file_type = FileType::try_from(&buf[0..2])?;
+            let permission = String::from_utf8(buf[2..6].to_vec())?;
+            (file_type, permission)
+        };
+
+        cursor.seek(SeekFrom::Current(1))?;
+        let size = cursor
+            .get_ref()
+            .iter()
+            .skip(cursor.position() as usize)
+            .take_while(|&&b| b != 0x00)
+            .count();
+        let mut buf = vec![0; size];
+        cursor.read_exact(&mut buf)?;
+        let path = PathBuf::from(String::from_utf8(buf)?);
+
+        cursor.seek(SeekFrom::Current(1))?;
+        let mut buf = vec![0; 20];
+        cursor.read_exact(&mut buf)?;
+        let sha = buf
+            .iter()
+            .map(|&c| format!("{:02x}", c))
+            .collect::<String>();
+        let tree = TreeOject {
+            file_type,
+            permission,
+            path,
+            sha,
+        };
+        objects.push(tree);
+    }
+    Ok(GitObject::Tree(objects))
+}
+
+fn tree_serialize(obj: &GitObject) -> Result<Vec<u8>> {
+    let GitObject::Tree(mut objects) = obj.clone() else {
+        anyhow::bail!("Invalid object");
+    };
+    objects.sort_by_key(|o| {
+        if o.file_type == FileType::RegularFile {
+            o.path.display().to_string()
+        } else {
+            o.path.display().to_string() + "/"
+        }
+    });
+    let mut ret = vec![];
+    for o in objects {
+        ret.extend(o.file_type.as_str().as_bytes());
+        ret.extend(o.permission.as_bytes());
+        ret.push(b' ');
+        ret.extend(o.path.display().to_string().as_bytes());
+        ret.push(0x00);
+        ret.extend(o.sha.as_bytes());
+    }
+    Ok(ret)
 }
 
 #[cfg(test)]
