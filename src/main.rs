@@ -1,15 +1,17 @@
 use anyhow::Result;
 use cat_file::cmd_cat_file;
+use checkout::cmd_checkout;
 use clap::Parser;
 use git_object::GitObjectKind;
 use hash_object::cmd_hash_object;
 use init::cmd_init;
 use log::cmd_log;
 use ls_tree::cmd_ls_tree;
-use checkout::cmd_checkout;
+use show_ref::cmd_show_ref;
 use std::path::PathBuf;
 
 mod cat_file;
+mod checkout;
 mod git_config;
 mod git_object;
 mod git_repository;
@@ -17,7 +19,7 @@ mod hash_object;
 mod init;
 mod log;
 mod ls_tree;
-mod checkout;
+mod show_ref;
 
 #[derive(Debug, clap::Parser)]
 enum CLI {
@@ -77,7 +79,7 @@ fn main() -> Result<()> {
         CLI::LsTree { tree, recursive } => cmd_ls_tree(tree, recursive)?,
         CLI::RevParse => todo!(),
         CLI::Rm => todo!(),
-        CLI::ShowRef => todo!(),
+        CLI::ShowRef => cmd_show_ref()?,
         CLI::Status => todo!(),
         CLI::Tag => todo!(),
     }
