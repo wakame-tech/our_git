@@ -278,7 +278,7 @@ pub fn serialize_indexmap(kvml: IndexMap<String, Vec<String>>) -> Result<Vec<u8>
         }
     }
     let message = kvml["message"][0].to_string();
-    ret += format!("\n{}\n", message).as_str();
+    ret += format!("\n{}", message).as_str();
     Ok(ret.as_bytes().to_vec())
 }
 
