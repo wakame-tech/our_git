@@ -6,6 +6,7 @@ use hash_object::cmd_hash_object;
 use init::cmd_init;
 use log::cmd_log;
 use ls_tree::cmd_ls_tree;
+use checkout::cmd_checkout;
 use std::path::PathBuf;
 
 mod cat_file;
@@ -16,6 +17,7 @@ mod hash_object;
 mod init;
 mod log;
 mod ls_tree;
+mod checkout;
 
 #[derive(Debug, clap::Parser)]
 enum CLI {
@@ -27,7 +29,10 @@ enum CLI {
         object: String,
     },
     CheckIgnore,
-    Checkout,
+    Checkout {
+        commit: String,
+        path: PathBuf,
+    },
     Commit,
     HashObject {
         // -w オプションとして使えるようにする
@@ -63,7 +68,7 @@ fn main() -> Result<()> {
         CLI::Add { .. } => todo!(),
         CLI::CatFile { kind, object } => cmd_cat_file(kind, object)?,
         CLI::CheckIgnore => todo!(),
-        CLI::Checkout => todo!(),
+        CLI::Checkout { commit, path } => cmd_checkout(commit, path)?,
         CLI::Commit => todo!(),
         CLI::HashObject { write, kind, path } => cmd_hash_object(write, kind, path)?,
         CLI::Init { path } => cmd_init(path)?,

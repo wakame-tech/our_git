@@ -54,6 +54,7 @@ pub enum GitObject {
     },
     Commit {
         size: usize,
+        // SHA-1 hash
         tree: String,
         // 2つより多くなるのかわからん
         parent: Vec<String>,
@@ -269,6 +270,7 @@ pub fn object_read(gitdir: &PathBuf, sha: &str) -> Result<GitObject> {
     let mut bin = Vec::new();
     ZlibDecoder::new(f).read_to_end(&mut bin)?;
 
+    // git fetch --refetch --no-auto-gc
     let space_at = bin.iter().position(|&b| b == b' ').unwrap();
     let header = String::from_utf8(bin[..space_at].to_vec())?;
     let null_at = bin.iter().position(|&b| b == 0).unwrap();
