@@ -40,7 +40,7 @@ fn tree_checkout(gitdir: &PathBuf, tree_vec: &[TreeOject], path: &PathBuf) -> Re
         let obj = object_read(gitdir, &tree_obj.sha)?;
         let obj_path = path.join(&tree_obj.path);
         match obj {
-            GitObject::Blob { size, content } => {
+            GitObject::Blob { content } => {
                 fs::write(&obj_path, content)?;
             }
             GitObject::Tree(objects) => {

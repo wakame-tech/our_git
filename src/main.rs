@@ -8,7 +8,8 @@ use init::cmd_init;
 use log::cmd_log;
 use ls_tree::cmd_ls_tree;
 use show_ref::cmd_show_ref;
-use std::path::PathBuf;
+use std::{env, path::PathBuf};
+use tag::{cmd_ls_tag, cmd_tag};
 
 mod cat_file;
 mod checkout;
@@ -20,6 +21,7 @@ mod init;
 mod log;
 mod ls_tree;
 mod show_ref;
+mod tag;
 
 #[derive(Debug, clap::Parser)]
 enum CLI {
@@ -60,13 +62,28 @@ enum CLI {
     Rm,
     ShowRef,
     Status,
-    Tag,
+    LsTag,
+    Tag {
+        name: String,
+        // -a or --annotate
+        #[arg(short)]
+        annotate: bool,
+        object: String,
+    },
+}
+
+fn parse() -> Result<CLI> {
+    let args = env::args().collect::<Vec<_>>();
+    if args.len() == 2 && args[1] == "tag".to_string() {
+        return Ok(CLI::LsTag);
+    }
+    CLI::try_parse_from(args).map_err(|e| e.into())
 }
 
 fn main() -> Result<()> {
     // cargo run -- --hoge fuga
     // -- はcargo runの引数とclapの引数を分けるために必要
-    match CLI::try_parse()? {
+    match parse()? {
         CLI::Add { .. } => todo!(),
         CLI::CatFile { kind, object } => cmd_cat_file(kind, object)?,
         CLI::CheckIgnore => todo!(),
@@ -81,7 +98,12 @@ fn main() -> Result<()> {
         CLI::Rm => todo!(),
         CLI::ShowRef => cmd_show_ref()?,
         CLI::Status => todo!(),
-        CLI::Tag => todo!(),
+        CLI::LsTag => cmd_ls_tag()?,
+        CLI::Tag {
+            name,
+            annotate,
+            object,
+        } => cmd_tag(name, annotate, object)?,
     }
 
     // indexmap が入れた順番に取り出せる

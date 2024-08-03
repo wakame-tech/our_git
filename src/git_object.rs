@@ -36,7 +36,7 @@ impl GitObjectKind {
     }
 
     pub fn from_str(s: &str) -> Option<GitObjectKind> {
-        match s {
+        match dbg!(s) {
             "blob" => Some(GitObjectKind::Blob),
             "commit" => Some(GitObjectKind::Commit),
             "tag" => Some(GitObjectKind::Tag),
@@ -49,11 +49,9 @@ impl GitObjectKind {
 #[derive(Debug, Clone)]
 pub enum GitObject {
     Blob {
-        size: usize,
         content: Vec<u8>,
     },
     Commit {
-        size: usize,
         // SHA-1 hash
         tree: String,
         // 2つより多くなるのかわからん
@@ -63,7 +61,13 @@ pub enum GitObject {
         // gpgsig: String,
         message: String,
     },
-    Tag,
+    Tag {
+        object: String,
+        kind: GitObjectKind,
+        tag: String,
+        tagger: String,
+        message: String,
+    },
     Tree(Vec<TreeOject>),
 }
 
@@ -118,17 +122,21 @@ impl TryFrom<&[u8]> for FileType {
 }
 
 impl GitObject {
-    pub fn hash(&self) -> Result<String> {
-        let (kind, size) = match self {
-            GitObject::Blob { size, .. } => (GitObjectKind::Blob, size),
-            GitObject::Commit { size, .. } => (GitObjectKind::Commit, size),
+    fn kind(&self) -> GitObjectKind {
+        match self {
+            GitObject::Blob { .. } => GitObjectKind::Blob,
+            GitObject::Commit { .. } => GitObjectKind::Commit,
+            GitObject::Tag { .. } => GitObjectKind::Tag,
             _ => todo!(),
-        };
+        }
+    }
+
+    pub fn hash(&self) -> Result<String> {
         let data = serialize_object(self);
         let result = [
-            kind.as_str().to_string().into_bytes(),
+            self.kind().as_str().to_string().into_bytes(),
             vec![b' '],
-            format!("{}", size).into_bytes(),
+            format!("{}", data.len()).into_bytes(),
             vec![0],
             data,
         ]
@@ -139,27 +147,22 @@ impl GitObject {
     }
 
     pub fn write(&self, gitdir: &PathBuf) -> Result<()> {
-        match self {
-            GitObject::Blob { size, .. } => {
-                let data = serialize_object(self);
-                let result = [
-                    GitObjectKind::Blob.as_str().to_string().into_bytes(),
-                    vec![b' '],
-                    format!("{}", size).into_bytes(),
-                    vec![0],
-                    data,
-                ]
-                .concat();
-                let sha = self.hash()?;
-                let path = gitdir.join("objects").join(&sha[..2]).join(&sha[2..]);
-                fs::create_dir_all(path.parent().unwrap())?;
-                if !path.exists() {
-                    let f = File::create(&path)?;
-                    let mut zipped = ZlibEncoder::new(f, Compression::default());
-                    zipped.write_all(&result)?;
-                }
-            }
-            _ => todo!(),
+        let data = serialize_object(self);
+        let result = [
+            self.kind().as_str().to_string().into_bytes(),
+            vec![b' '],
+            format!("{}", data.len()).into_bytes(),
+            vec![0],
+            data,
+        ]
+        .concat();
+        let sha = self.hash()?;
+        let path = gitdir.join("objects").join(&sha[..2]).join(&sha[2..]);
+        fs::create_dir_all(path.parent().unwrap())?;
+        if !path.exists() {
+            let f = File::create(&path)?;
+            let mut zipped = ZlibEncoder::new(f, Compression::default());
+            zipped.write_all(&result)?;
         }
         Ok(())
     }
@@ -177,17 +180,33 @@ pub fn serialize_object(obj: &GitObject) -> Vec<u8> {
             ..
         } => {
             let dct = IndexMap::from_iter(vec![
-                (Some("tree".to_string()), vec![tree.clone()]),
-                (Some("parent".to_string()), parent.clone()),
-                (Some("author".to_string()), vec![author.clone()]),
-                (Some("committer".to_string()), vec![comitter.clone()]),
+                ("tree".to_string(), vec![tree.clone()]),
+                ("parent".to_string(), parent.clone()),
+                ("author".to_string(), vec![author.clone()]),
+                ("committer".to_string(), vec![comitter.clone()]),
                 // (Some("gpgsig".to_string()), vec![gpgsig.clone()]),
-                (None, vec![message.clone()]),
+                ("message".to_string(), vec![message.clone()]),
             ]);
-            serialize_commit(dct).unwrap()
+            serialize_indexmap(dct).unwrap()
         }
         GitObject::Tree(_) => tree_serialize(obj).unwrap(),
-        _ => todo!(),
+        GitObject::Tag {
+            object,
+            kind,
+            tag,
+            tagger,
+            message,
+            ..
+        } => {
+            let dct = IndexMap::from_iter(vec![
+                ("object".to_string(), vec![object.clone()]),
+                ("type".to_string(), vec![kind.as_str().to_string()]),
+                ("tag".to_string(), vec![tag.clone()]),
+                ("tagger".to_string(), vec![tagger.clone()]),
+                ("message".to_string(), vec![message.clone()]),
+            ]);
+            serialize_indexmap(dct).unwrap()
+        }
     }
 }
 
@@ -196,10 +215,10 @@ pub fn deserialize_object(data: &[u8]) -> GitObject {
 }
 
 // commitをparseする
-pub fn parse_commit(
+pub fn parse_commit<'a>(
     data: &[u8],
     start: usize,
-    dct: &mut IndexMap<Option<String>, Vec<String>>,
+    dct: &mut IndexMap<String, Vec<String>>,
 ) -> Result<()> {
     let spc = data[start..]
         .iter()
@@ -214,7 +233,10 @@ pub fn parse_commit(
 
     if (spc < 0) || nl < spc {
         assert!(nl == start as i32);
-        dct.insert(None, vec![String::from_utf8(data[start + 1..].to_vec())?]);
+        dct.insert(
+            "message".to_string(),
+            vec![String::from_utf8(data[start + 1..].to_vec())?],
+        );
         return Ok(());
     }
     let spc = spc as usize;
@@ -234,29 +256,29 @@ pub fn parse_commit(
     }
     let value = String::from_utf8(data[spc + 1..end].to_vec())?.replace("\n ", "\n");
 
-    if let Some(e) = dct.get_mut(&Some(key.to_string())) {
+    if let Some(e) = dct.get_mut(&key) {
         // 要素があったらpush
         e.push(value);
     } else {
         // なかったらinsert
-        dct.insert(Some(key), vec![value]);
+        dct.insert(key, vec![value]);
     }
 
     parse_commit(data, end + 1, dct)
 }
 
-pub fn serialize_commit(kvml: IndexMap<Option<String>, Vec<String>>) -> Result<Vec<u8>> {
+pub fn serialize_indexmap(kvml: IndexMap<String, Vec<String>>) -> Result<Vec<u8>> {
     let mut ret = String::new();
     for (k, val) in kvml.iter() {
-        let Some(k) = k else {
+        if k == "message" {
             continue;
-        };
+        }
         for v in val.iter() {
             ret += format!("{} {}\n", k, v.replace("\n", "\n ")).as_str();
         }
     }
-    let message = kvml[&None][0].to_string();
-    ret += format!("\n{}", message).as_str();
+    let message = kvml["message"][0].to_string();
+    ret += format!("\n{}\n", message).as_str();
     Ok(ret.as_bytes().to_vec())
 }
 
@@ -280,26 +302,22 @@ pub fn object_read(gitdir: &PathBuf, sha: &str) -> Result<GitObject> {
     match header.as_str() {
         "blob" => {
             anyhow::ensure!(size == content.len(), "Size mismatch");
-            Ok(GitObject::Blob { size, content })
+            Ok(GitObject::Blob { content })
         }
         "commit" => {
             let mut dct = IndexMap::new();
             parse_commit(&content, 0, &mut dct)?;
             Ok(GitObject::Commit {
-                size,
-                tree: dct[&Some("tree".to_string())][0].clone(),
-                parent: dct
-                    .get(&Some("parent".to_string()))
-                    .unwrap_or(&vec![])
-                    .clone(),
-                author: dct[&Some("author".to_string())][0].clone(),
-                committer: dct[&Some("committer".to_string())][0].clone(),
+                tree: dct["tree"][0].clone(),
+                parent: dct.get("parent").unwrap_or(&vec![]).clone(),
+                author: dct["author"][0].clone(),
+                committer: dct["committer"][0].clone(),
                 // gpgsig: dct[&Some("gpgsig".to_string())][0].clone(),
-                message: dct[&None][0].clone(),
+                message: dct["message"][0].clone(),
             })
         }
         "tree" => tree_parse(&content),
-        _ => anyhow::bail!("Invalid header {}", header),
+        _ => anyhow::bail!("object-read() not support {}", header),
     }
 }
 

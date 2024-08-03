@@ -28,7 +28,7 @@ fn ref_resolve(gitdir: &PathBuf, ref_path: &PathBuf) -> Result<String> {
     }
 }
 
-fn ref_list(gitdir: &PathBuf, current: &PathBuf) -> Result<BTreeMap<PathBuf, String>> {
+pub fn ref_list(gitdir: &PathBuf, current: &PathBuf) -> Result<BTreeMap<PathBuf, String>> {
     let mut refs = BTreeMap::new();
     for entry in read_dir(current)? {
         let path = entry?.path();
@@ -42,7 +42,7 @@ fn ref_list(gitdir: &PathBuf, current: &PathBuf) -> Result<BTreeMap<PathBuf, Str
     Ok(refs)
 }
 
-fn show_ref(refs: BTreeMap<PathBuf, String>, with_hash: bool) -> Result<()> {
+pub fn show_ref(refs: BTreeMap<PathBuf, String>, with_hash: bool) -> Result<()> {
     for (k, v) in refs {
         if with_hash {
             println!("{} -> {}", k.display(), v)
