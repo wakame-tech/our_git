@@ -4,12 +4,14 @@ use std::{fs, path::PathBuf};
 use crate::{
     git_object::{object_read, GitObject, TreeObject},
     git_repository::repo_find,
+    resolve::object_find,
 };
 
-pub fn cmd_checkout(commit: String, path: PathBuf) -> Result<()> {
+pub fn cmd_checkout(object: String, path: PathBuf) -> Result<()> {
     let current_dir = std::env::current_dir()?;
     let gitdir = repo_find(&current_dir)?.gitdir;
-    let tree = match object_read(&gitdir, commit.as_str())? {
+    let sha = object_find(&gitdir, object, None)?;
+    let tree = match object_read(&gitdir, &sha)? {
         GitObject::Commit { tree, .. } => object_read(&gitdir, tree.as_str())?,
         tree @ GitObject::Tree(_) => tree,
         _ => anyhow::bail!("commit or tree object expected"),

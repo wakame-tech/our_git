@@ -15,14 +15,16 @@ pub fn cmd_show_ref() -> Result<()> {
     show_ref(refs, true)
 }
 
-fn ref_resolve(gitdir: &PathBuf, ref_path: &PathBuf) -> Result<String> {
-    let mut f = File::open(ref_path)?;
+pub(crate) fn ref_resolve(gitdir: &PathBuf, ref_path: &PathBuf) -> Result<String> {
+    println!("ref_resolve: open {}", ref_path.display());
+    let path = gitdir.join(ref_path);
+    let mut f = File::open(path)?;
     let mut buf = String::new();
     f.read_to_string(&mut buf)?;
     let buf = buf.trim().to_string();
     if buf.starts_with("ref: ") {
         let ref_path = buf.trim_start_matches("ref: ");
-        ref_resolve(gitdir, &gitdir.join(ref_path))
+        ref_resolve(gitdir, &ref_path.into())
     } else {
         Ok(buf)
     }

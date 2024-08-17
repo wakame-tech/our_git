@@ -36,7 +36,7 @@ impl GitObjectKind {
     }
 
     pub fn from_str(s: &str) -> Option<GitObjectKind> {
-        match dbg!(s) {
+        match s {
             "blob" => Some(GitObjectKind::Blob),
             "commit" => Some(GitObjectKind::Commit),
             "tag" => Some(GitObjectKind::Tag),
@@ -286,8 +286,6 @@ pub fn object_read(gitdir: &PathBuf, sha: &str) -> Result<GitObject> {
     // https://docs.rs/flate2/latest/flate2/read/struct.ZlibDecoder.html
     let path = gitdir.join("objects").join(&sha[..2]).join(&sha[2..]);
     anyhow::ensure!(path.is_file(), "{} is not a file", path.display());
-
-    dbg!(&path);
     let f = File::open(path)?;
     let mut bin = Vec::new();
     ZlibDecoder::new(f).read_to_end(&mut bin)?;

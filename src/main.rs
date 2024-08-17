@@ -20,6 +20,7 @@ mod hash_object;
 mod init;
 mod log;
 mod ls_tree;
+mod resolve;
 mod show_ref;
 mod tag;
 
@@ -34,7 +35,7 @@ enum CLI {
     },
     CheckIgnore,
     Checkout {
-        commit: String,
+        object: String,
         path: PathBuf,
     },
     Commit,
@@ -87,7 +88,10 @@ fn main() -> Result<()> {
         CLI::Add { .. } => todo!(),
         CLI::CatFile { kind, object } => cmd_cat_file(kind, object)?,
         CLI::CheckIgnore => todo!(),
-        CLI::Checkout { commit, path } => cmd_checkout(commit, path)?,
+        CLI::Checkout {
+            object: commit,
+            path,
+        } => cmd_checkout(commit, path)?,
         CLI::Commit => todo!(),
         CLI::HashObject { write, kind, path } => cmd_hash_object(write, kind, path)?,
         CLI::Init { path } => cmd_init(path)?,

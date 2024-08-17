@@ -1,17 +1,18 @@
 use crate::{
     git_object::{object_read, GitObject},
     git_repository::repo_find,
+    resolve::object_find,
 };
 use anyhow::Result;
 use std::{collections::HashSet, path::PathBuf};
 
-pub fn cmd_log(object_str: String) -> Result<()> {
+pub fn cmd_log(object: String) -> Result<()> {
     let current_dir = std::env::current_dir()?;
     let gitdir = repo_find(&current_dir)?.gitdir;
     println!("digraph wyaglog {{");
     println!("\tnode [shape=rect];");
-    // TODO: HEADに対応
-    let sha = object_read(&gitdir, &object_str)?.hash()?;
+    let sha = object_find(&gitdir, object, None)?;
+    let sha = object_read(&gitdir, &sha)?.hash()?;
     log_graphviz(&gitdir, sha, &mut HashSet::new())?;
     println!("}}");
     Ok(())
