@@ -6,6 +6,7 @@ use git_object::GitObjectKind;
 use hash_object::cmd_hash_object;
 use init::cmd_init;
 use log::cmd_log;
+use ls_files::cmd_ls_files;
 use ls_tree::cmd_ls_tree;
 use rev_parse::cmd_rev_parse;
 use show_ref::cmd_show_ref;
@@ -15,11 +16,13 @@ use tag::{cmd_ls_tag, cmd_tag};
 mod cat_file;
 mod checkout;
 mod git_config;
+mod git_index;
 mod git_object;
 mod git_repository;
 mod hash_object;
 mod init;
 mod log;
+mod ls_files;
 mod ls_tree;
 mod resolve;
 mod rev_parse;
@@ -55,7 +58,10 @@ enum CLI {
     Log {
         object: String,
     },
-    LsFiles,
+    LsFiles {
+        #[arg(short)]
+        verbose: bool,
+    },
     LsTree {
         tree: String,
         #[arg(short)]
@@ -102,7 +108,7 @@ fn main() -> Result<()> {
         CLI::HashObject { write, kind, path } => cmd_hash_object(write, kind, path)?,
         CLI::Init { path } => cmd_init(path)?,
         CLI::Log { object } => cmd_log(object)?,
-        CLI::LsFiles => todo!(),
+        CLI::LsFiles { verbose } => cmd_ls_files(verbose)?,
         CLI::LsTree { tree, recursive } => cmd_ls_tree(tree, recursive)?,
         CLI::RevParse { kind, object } => cmd_rev_parse(kind, object)?,
         CLI::Rm => todo!(),
