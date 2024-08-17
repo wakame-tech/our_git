@@ -2,7 +2,7 @@ use anyhow::{Ok, Result};
 use std::{fs, path::PathBuf};
 
 use crate::{
-    git_object::{object_read, GitObject, TreeOject},
+    git_object::{object_read, GitObject, TreeObject},
     git_repository::repo_find,
 };
 
@@ -35,7 +35,7 @@ pub fn cmd_checkout(commit: String, path: PathBuf) -> Result<()> {
     Ok(())
 }
 
-fn tree_checkout(gitdir: &PathBuf, tree_vec: &[TreeOject], path: &PathBuf) -> Result<()> {
+fn tree_checkout(gitdir: &PathBuf, tree_vec: &[TreeObject], path: &PathBuf) -> Result<()> {
     for tree_obj in tree_vec {
         let obj = object_read(gitdir, &tree_obj.sha)?;
         let obj_path = path.join(&tree_obj.path);

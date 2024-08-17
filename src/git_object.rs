@@ -68,11 +68,11 @@ pub enum GitObject {
         tagger: String,
         message: String,
     },
-    Tree(Vec<TreeOject>),
+    Tree(Vec<TreeObject>),
 }
 
 #[derive(Debug, Clone)]
-pub struct TreeOject {
+pub struct TreeObject {
     pub file_type: FileType,
     pub permission: String,
     pub path: PathBuf,
@@ -175,7 +175,7 @@ pub fn serialize_object(obj: &GitObject) -> Vec<u8> {
             tree,
             parent,
             author,
-            committer: comitter,
+            committer,
             message,
             ..
         } => {
@@ -183,7 +183,7 @@ pub fn serialize_object(obj: &GitObject) -> Vec<u8> {
                 ("tree".to_string(), vec![tree.clone()]),
                 ("parent".to_string(), parent.clone()),
                 ("author".to_string(), vec![author.clone()]),
-                ("committer".to_string(), vec![comitter.clone()]),
+                ("committer".to_string(), vec![committer.clone()]),
                 // (Some("gpgsig".to_string()), vec![gpgsig.clone()]),
                 ("message".to_string(), vec![message.clone()]),
             ]);
@@ -361,7 +361,7 @@ pub fn tree_parse(data: &[u8]) -> Result<GitObject> {
             .iter()
             .map(|&c| format!("{:02x}", c))
             .collect::<String>();
-        let tree = TreeOject {
+        let tree = TreeObject {
             file_type,
             permission,
             path,
