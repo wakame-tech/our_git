@@ -10,6 +10,7 @@ use ls_files::cmd_ls_files;
 use ls_tree::cmd_ls_tree;
 use rev_parse::cmd_rev_parse;
 use show_ref::cmd_show_ref;
+use status::cmd_status;
 use std::{env, path::PathBuf};
 use tag::{cmd_ls_tag, cmd_tag};
 
@@ -27,6 +28,7 @@ mod ls_tree;
 mod resolve;
 mod rev_parse;
 mod show_ref;
+mod status;
 mod tag;
 
 #[derive(Debug, clap::Parser)]
@@ -113,7 +115,7 @@ fn main() -> Result<()> {
         CLI::RevParse { kind, object } => cmd_rev_parse(kind, object)?,
         CLI::Rm => todo!(),
         CLI::ShowRef => cmd_show_ref()?,
-        CLI::Status => todo!(),
+        CLI::Status => cmd_status()?,
         CLI::LsTag => cmd_ls_tag()?,
         CLI::Tag {
             name,

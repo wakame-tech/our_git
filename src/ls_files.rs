@@ -2,7 +2,7 @@ use crate::{git_index::GitIndex, git_repository::repo_find};
 use anyhow::Result;
 use std::{fs::File, io::Read, path::PathBuf};
 
-fn index_read(gitdir: &PathBuf) -> Result<GitIndex> {
+pub(crate) fn index_read(gitdir: &PathBuf) -> Result<GitIndex> {
     let index_path = gitdir.join("index");
     if !index_path.exists() {
         return Ok(GitIndex::new(2, vec![]));

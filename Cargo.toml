@@ -11,6 +11,7 @@ clap = { version = "4.5.6", features = ["derive"] }
 digest = "0.10.7"
 flate2 = "1.0.30"
 hex = "0.4.3"
+ignore = "0.4.22"
 indexmap = "2.2.6"
 petgraph = "0.6.5"
 regex = "1.10.4"

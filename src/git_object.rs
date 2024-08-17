@@ -127,7 +127,7 @@ impl GitObject {
             GitObject::Blob { .. } => GitObjectKind::Blob,
             GitObject::Commit { .. } => GitObjectKind::Commit,
             GitObject::Tag { .. } => GitObjectKind::Tag,
-            _ => todo!(),
+            GitObject::Tree(_) => GitObjectKind::Tree,
         }
     }
 

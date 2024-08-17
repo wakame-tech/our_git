@@ -72,10 +72,12 @@ pub(crate) fn object_find(
     };
     let obj = object_read(gitdir, &sha)?;
     if Some(GitObjectKind::Tree) == format {
-        let GitObject::Commit { tree, .. } = obj else {
-            return Err(anyhow::anyhow!("commit object expected"));
+        if let GitObject::Commit { tree, .. } = obj {
+            return Ok(tree);
+        } else if let GitObject::Tree(_) = obj {
+            return Ok(sha);
         };
-        return Ok(tree);
+        return Err(anyhow::anyhow!("commit or tree object expected"));
     };
 
     if let GitObject::Tag { object, .. } = obj {
