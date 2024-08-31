@@ -9,6 +9,7 @@ use log::cmd_log;
 use ls_files::cmd_ls_files;
 use ls_tree::cmd_ls_tree;
 use rev_parse::cmd_rev_parse;
+use rm::cmd_rm;
 use show_ref::cmd_show_ref;
 use status::cmd_status;
 use std::{env, path::PathBuf};
@@ -27,6 +28,7 @@ mod ls_files;
 mod ls_tree;
 mod resolve;
 mod rev_parse;
+mod rm;
 mod show_ref;
 mod status;
 mod tag;
@@ -35,6 +37,8 @@ mod tag;
 enum CLI {
     Add {
         path: PathBuf,
+        #[arg(short)]
+        index_path: Option<PathBuf>,
     },
     CatFile {
         kind: GitObjectKind,
@@ -63,6 +67,8 @@ enum CLI {
     LsFiles {
         #[arg(short)]
         verbose: bool,
+        #[arg(short)]
+        index_path: Option<PathBuf>,
     },
     LsTree {
         tree: String,
@@ -74,9 +80,16 @@ enum CLI {
         kind: Option<GitObjectKind>,
         object: String,
     },
-    Rm,
+    Rm {
+        path_vec: Vec<PathBuf>,
+        #[arg(short)]
+        index_path: Option<PathBuf>,
+    },
     ShowRef,
-    Status,
+    Status {
+        #[arg(short)]
+        index_path: Option<PathBuf>,
+    },
     LsTag,
     Tag {
         name: String,
@@ -110,12 +123,21 @@ fn main() -> Result<()> {
         CLI::HashObject { write, kind, path } => cmd_hash_object(write, kind, path)?,
         CLI::Init { path } => cmd_init(path)?,
         CLI::Log { object } => cmd_log(object)?,
-        CLI::LsFiles { verbose } => cmd_ls_files(verbose)?,
+        CLI::LsFiles {
+            verbose,
+            index_path,
+        } => cmd_ls_files(verbose, index_path)?,
         CLI::LsTree { tree, recursive } => cmd_ls_tree(tree, recursive)?,
         CLI::RevParse { kind, object } => cmd_rev_parse(kind, object)?,
-        CLI::Rm => todo!(),
+        CLI::Rm {
+            path_vec,
+            index_path,
+        } => {
+            anyhow::ensure!(!path_vec.is_empty(), "path_vec must not be empty");
+            cmd_rm(path_vec, index_path)?
+        }
         CLI::ShowRef => cmd_show_ref()?,
-        CLI::Status => cmd_status()?,
+        CLI::Status { index_path } => cmd_status(index_path)?,
         CLI::LsTag => cmd_ls_tag()?,
         CLI::Tag {
             name,

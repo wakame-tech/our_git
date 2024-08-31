@@ -119,10 +119,15 @@ fn cmd_status_index_worktree(workdir: &PathBuf, index: &GitIndex) -> Result<()> 
     Ok(())
 }
 
-pub(crate) fn cmd_status() -> Result<()> {
+pub(crate) fn cmd_status(index_path: Option<PathBuf>) -> Result<()> {
     let workdir = std::env::current_dir()?;
     let gitdir = repo_find(&workdir)?.gitdir;
-    let index = index_read(&gitdir)?;
+    let index_path = index_path.unwrap_or_else(|| gitdir.join("index"));
+    let index = if !index_path.exists() {
+        GitIndex::new(2, vec![])
+    } else {
+        index_read(&index_path)?
+    };
     cmd_status_branch(&gitdir)?;
     cmd_status_head_index(&gitdir, &index)?;
     println!("");

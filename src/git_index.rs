@@ -8,7 +8,7 @@ pub(crate) struct GitIndexEntry {
     pub(crate) mtime: DateTime<Utc>,
     pub(crate) dev: u32,
     pub(crate) ino: u32,
-    pub(crate) mode_type: u32,
+    pub(crate) mode_type: u16,
     pub(crate) mode_perms: u16,
     pub(crate) uid: u32,
     pub(crate) gid: u32,
@@ -52,7 +52,7 @@ impl GitIndex {
             let unused = header.get_u16();
             anyhow::ensure!(unused == 0, "unused field is not zero");
             let mode = header.get_u16();
-            let mode_type = (mode >> 12) as u32;
+            let mode_type = mode >> 12;
             anyhow::ensure!(
                 vec![0b1000, 0b1010, 0b1110].contains(&mode_type),
                 "invalid mode"
@@ -118,5 +118,61 @@ impl GitIndex {
             entries.push(entry);
         }
         Ok(Self::new(version, entries))
+    }
+
+    pub(crate) fn serialize(&self) -> Result<Vec<u8>> {
+        let mut res: Vec<u8> = vec![];
+        // header
+        res.extend(b"DIRC");
+        let version = self.version;
+        res.extend(version.to_be_bytes());
+        let entry_count = self.entries.len() as u32;
+        res.extend(entry_count.to_be_bytes());
+
+        // entries
+        for entry in &self.entries {
+            // 12
+            res.extend((entry.ctime.timestamp() as u32).to_be_bytes());
+            res.extend(entry.ctime.timestamp_subsec_nanos().to_be_bytes());
+            res.extend((entry.mtime.timestamp() as u32).to_be_bytes());
+            res.extend(entry.mtime.timestamp_subsec_nanos().to_be_bytes());
+            res.extend(entry.dev.to_be_bytes());
+            res.extend(entry.ino.to_be_bytes());
+            // 12 + 24
+            res.extend([0u8; 2]);
+
+            let mode = (entry.mode_type << 12) | entry.mode_perms;
+            // 12 + 26
+            res.extend(mode.to_be_bytes());
+
+            // 12 + 30
+            res.extend(entry.uid.to_be_bytes());
+            // 12 + 34
+            res.extend(entry.gid.to_be_bytes());
+            // 12 + 38
+            res.extend((entry.fsize as u32).to_be_bytes());
+            // 12 + 58
+            let sha = hex::decode(entry.sha.clone())?;
+            assert_eq!(sha.len(), 20);
+            res.extend(sha);
+
+            let flag_assume_valid = if entry.flag_assume_valid { 1 << 15 } else { 0 };
+            let flag_extended = 0;
+            let flag_stage = (entry.flag_stage) << 12;
+            let name_length = entry.name.len() as u16 & 0x0fff;
+            let flag = flag_assume_valid | flag_extended | flag_stage | name_length;
+            res.extend(flag.to_be_bytes());
+
+            res.extend(entry.name.as_bytes());
+            res.extend([0u8]);
+
+            let len = 62 + name_length + 1;
+            if len % 8 != 0 {
+                let pad = 8 - len % 8;
+                res.extend(vec![0u8; pad as usize]);
+            }
+        }
+
+        return Ok(res);
     }
 }
