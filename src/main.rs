@@ -1,3 +1,4 @@
+use add::cmd_add;
 use anyhow::Result;
 use cat_file::cmd_cat_file;
 use checkout::cmd_checkout;
@@ -15,6 +16,7 @@ use status::cmd_status;
 use std::{env, path::PathBuf};
 use tag::{cmd_ls_tag, cmd_tag};
 
+mod add;
 mod cat_file;
 mod checkout;
 mod git_config;
@@ -36,7 +38,7 @@ mod tag;
 #[derive(Debug, clap::Parser)]
 enum CLI {
     Add {
-        path: PathBuf,
+        path_vec: Vec<PathBuf>,
         #[arg(short)]
         index_path: Option<PathBuf>,
     },
@@ -112,7 +114,10 @@ fn main() -> Result<()> {
     // cargo run -- --hoge fuga
     // -- はcargo runの引数とclapの引数を分けるために必要
     match parse()? {
-        CLI::Add { .. } => todo!(),
+        CLI::Add {
+            path_vec,
+            index_path,
+        } => cmd_add(&path_vec, index_path)?,
         CLI::CatFile { kind, object } => cmd_cat_file(kind, object)?,
         CLI::CheckIgnore => todo!(),
         CLI::Checkout {
@@ -134,7 +139,7 @@ fn main() -> Result<()> {
             index_path,
         } => {
             anyhow::ensure!(!path_vec.is_empty(), "path_vec must not be empty");
-            cmd_rm(path_vec, index_path)?
+            cmd_rm(&path_vec, index_path)?
         }
         CLI::ShowRef => cmd_show_ref()?,
         CLI::Status { index_path } => cmd_status(index_path)?,

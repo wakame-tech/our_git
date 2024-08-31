@@ -3,7 +3,7 @@ use std::{collections::HashSet, path::PathBuf};
 
 use crate::{git_index::GitIndex, git_repository::repo_find, ls_files::index_read};
 
-pub(crate) fn cmd_rm(path_vec: Vec<PathBuf>, index_path: Option<PathBuf>) -> Result<()> {
+pub(crate) fn cmd_rm(path_vec: &[PathBuf], index_path: Option<PathBuf>) -> Result<()> {
     let working_dir = std::env::current_dir()?;
     let gitdir = repo_find(&working_dir)?.gitdir;
     let index_path = index_path.unwrap_or_else(|| gitdir.join("index"));
