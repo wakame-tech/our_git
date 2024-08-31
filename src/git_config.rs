@@ -3,6 +3,34 @@ use ini::Ini;
 use std::path::PathBuf;
 
 #[derive(Debug)]
+pub struct GitConfigUser {
+    name: Option<String>,
+    email: Option<String>,
+}
+
+impl GitConfigUser {
+    pub fn read(path: &PathBuf) -> Result<Self> {
+        let conf = Ini::load_from_file(path)?;
+        conf.section(Some("user"))
+            .map(|s| GitConfigUser {
+                name: s.get("name").map(ToString::to_string),
+                email: s.get("email").map(ToString::to_string),
+            })
+            .ok_or(anyhow::anyhow!(""))
+    }
+
+    pub fn name_email(&self) -> Option<String> {
+        let Some(name) = &self.name else {
+            return None;
+        };
+        let Some(email) = &self.email else {
+            return None;
+        };
+        Some(format!("{} <{}>", name, email))
+    }
+}
+
+#[derive(Debug)]
 pub struct GitConfig {
     pub repository_format_version: i32,
     pub filemode: bool,
@@ -24,7 +52,7 @@ impl GitConfig {
         let conf = Ini::load_from_file(path)?;
         let core_repository_format_version = conf
             .section(Some("core"))
-            .ok_or(anyhow::anyhow!("core section not found"))?
+            .ok_or(anyhow::anyhow!(""))?
             .get("repositoryformatversion")
             .ok_or(anyhow::anyhow!("repositoryformatversion not found"))?
             .parse::<i32>()?;

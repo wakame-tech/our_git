@@ -1,0 +1,2 @@
+[alias]
+our_git = "run --"

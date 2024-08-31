@@ -3,6 +3,7 @@ use anyhow::Result;
 use cat_file::cmd_cat_file;
 use checkout::cmd_checkout;
 use clap::Parser;
+use commit::cmd_commit;
 use git_object::GitObjectKind;
 use hash_object::cmd_hash_object;
 use init::cmd_init;
@@ -19,6 +20,7 @@ use tag::{cmd_ls_tag, cmd_tag};
 mod add;
 mod cat_file;
 mod checkout;
+mod commit;
 mod git_config;
 mod git_index;
 mod git_object;
@@ -51,7 +53,10 @@ enum CLI {
         object: String,
         path: PathBuf,
     },
-    Commit,
+    Commit {
+        #[arg(short)]
+        message: Option<String>,
+    },
     HashObject {
         // -w オプションとして使えるようにする
         #[arg(short)]
@@ -124,7 +129,7 @@ fn main() -> Result<()> {
             object: commit,
             path,
         } => cmd_checkout(commit, path)?,
-        CLI::Commit => todo!(),
+        CLI::Commit { message } => cmd_commit(message)?,
         CLI::HashObject { write, kind, path } => cmd_hash_object(write, kind, path)?,
         CLI::Init { path } => cmd_init(path)?,
         CLI::Log { object } => cmd_log(object)?,
