@@ -55,6 +55,8 @@ enum CLI {
     },
     Commit {
         #[arg(short)]
+        index_path: Option<PathBuf>,
+        #[arg(short)]
         message: Option<String>,
     },
     HashObject {
@@ -129,7 +131,10 @@ fn main() -> Result<()> {
             object: commit,
             path,
         } => cmd_checkout(commit, path)?,
-        CLI::Commit { message } => cmd_commit(message)?,
+        CLI::Commit {
+            index_path,
+            message,
+        } => cmd_commit(message, index_path)?,
         CLI::HashObject { write, kind, path } => cmd_hash_object(write, kind, path)?,
         CLI::Init { path } => cmd_init(path)?,
         CLI::Log { object } => cmd_log(object)?,

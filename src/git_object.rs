@@ -74,7 +74,7 @@ pub enum GitObject {
 #[derive(Debug, Clone)]
 pub struct TreeObject {
     pub file_type: FileType,
-    pub permission: String,
+    pub permission: [u8; 4],
     pub path: PathBuf,
     pub sha: String,
 }
@@ -97,6 +97,25 @@ impl FileType {
         }
     }
 
+    pub fn as_u16(&self) -> u16 {
+        match self {
+            FileType::Tree => 0o04,
+            FileType::RegularFile => 0o10,
+            FileType::SymbolicLink => 0o12,
+            FileType::Submodule => 0o16,
+        }
+    }
+
+    pub fn from_u16(v: u16) -> Result<Self> {
+        match v {
+            0o04 => Ok(FileType::Tree),
+            0o10 => Ok(FileType::RegularFile),
+            0o12 => Ok(FileType::SymbolicLink),
+            0o16 => Ok(FileType::Submodule),
+            _ => Err(anyhow::anyhow!("error")),
+        }
+    }
+
     pub fn kind(&self) -> GitObjectKind {
         match self {
             FileType::Tree => GitObjectKind::Tree,
@@ -112,9 +131,13 @@ impl TryFrom<&[u8]> for FileType {
 
     fn try_from(value: &[u8]) -> Result<FileType> {
         match value {
+            // 000_100
             b"04" => Ok(FileType::Tree),
+            // 001_000
             b"10" => Ok(FileType::RegularFile),
+            // 001_010
             b"12" => Ok(FileType::SymbolicLink),
+            // 001_110
             b"16" => Ok(FileType::Submodule),
             _ => anyhow::bail!("Invalid file type {:#0x?}", value),
         }
@@ -332,12 +355,15 @@ pub fn tree_parse(data: &[u8]) -> Result<GitObject> {
         let mut buf: Vec<u8> = vec![0; size];
         cursor.read_exact(&mut buf)?;
         let (file_type, permission) = if size == 5 {
-            let file_type = FileType::try_from([b'0', buf[0]].as_slice())?;
-            let permission = String::from_utf8(buf[2..5].to_vec())?;
+            let file_type =
+                FileType::try_from([char::from_digit(0, 10).unwrap() as u8, buf[0]].as_slice())?;
+            // let permission = String::from_utf8(buf[2..5].to_vec())?;
+            let permission = buf[1..5].try_into().unwrap();
             (file_type, permission)
         } else {
             let file_type = FileType::try_from(&buf[0..2])?;
-            let permission = String::from_utf8(buf[2..6].to_vec())?;
+            let permission = buf[2..6].try_into().unwrap();
+            // let permission = String::from_utf8(buf[2..6].to_vec())?;
             (file_type, permission)
         };
 
@@ -384,11 +410,19 @@ fn tree_serialize(obj: &GitObject) -> Result<Vec<u8>> {
     let mut ret = vec![];
     for o in objects {
         ret.extend(o.file_type.as_str().as_bytes());
-        ret.extend(o.permission.as_bytes());
+        ret.extend(o.permission);
         ret.push(b' ');
         ret.extend(o.path.display().to_string().as_bytes());
         ret.push(0x00);
-        ret.extend(o.sha.as_bytes());
+        let sha = o
+            .sha
+            .chars()
+            .map(|c| c.to_digit(16).unwrap() as u8)
+            .collect::<Vec<_>>()
+            .chunks(2)
+            .map(|c| c[0] << 4 | c[1])
+            .collect::<Vec<u8>>();
+        ret.extend(&sha);
     }
     Ok(ret)
 }

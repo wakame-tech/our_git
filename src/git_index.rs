@@ -152,7 +152,12 @@ impl GitIndex {
             // 12 + 38
             res.extend((entry.fsize as u32).to_be_bytes());
             // 12 + 58
-            let sha = hex::decode(entry.sha.clone())?;
+            let sha = entry
+                .sha
+                .chars()
+                .map(|c| c.to_digit(16).unwrap() as u8)
+                .collect::<Vec<u8>>();
+            // let sha = hex::decode(entry.sha.clone())?;
             assert_eq!(sha.len(), 20);
             res.extend(sha);
 

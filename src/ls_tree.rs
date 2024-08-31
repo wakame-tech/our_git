@@ -25,7 +25,7 @@ fn ls_tree(gitdir: &PathBuf, sha: String, recursive: bool, prefix: &PathBuf) -> 
         let kind = o.file_type.kind();
         if !recursive || kind != GitObjectKind::Tree {
             println!(
-                "{}{:0>4} {} {}\t{}",
+                "{}{:?} {} {}\t{}",
                 o.file_type.as_str(),
                 o.permission,
                 kind.as_str(),

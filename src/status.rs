@@ -15,10 +15,11 @@ use std::{
     path::PathBuf,
 };
 
-fn branch_get_active(gitdir: &PathBuf) -> Result<Option<String>> {
+pub(crate) fn branch_get_active(gitdir: &PathBuf) -> Result<Option<String>> {
     let head = gitdir.join("HEAD");
     let mut content = String::new();
     File::open(head)?.read_to_string(&mut content)?;
+    let content = content.trim();
     if content.starts_with("ref: refs/heads/") {
         Ok(Some(
             content.trim_start_matches("ref: refs/heads/").to_string(),
