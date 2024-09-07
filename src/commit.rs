@@ -68,24 +68,6 @@ enum Value {
     Dir(String, String),
 }
 
-impl Value {
-    fn name(&self) -> String {
-        match self {
-            Value::File(e) => format!("File {}", e.name),
-            Value::Dir(d, _) => format!("Dir {}", d),
-        }
-    }
-}
-
-fn debug_tree_map(tree_map: &HashMap<PathBuf, Vec<Value>>) {
-    for (k, e) in tree_map {
-        println!("{}", k.display());
-        for v in e {
-            println!("- {}", v.name());
-        }
-    }
-}
-
 fn tree_from_index(gitdir: &PathBuf, index: GitIndex) -> Result<String> {
     fn parent(p: PathBuf) -> PathBuf {
         if let Some(p) = p.parent() {
@@ -104,14 +86,10 @@ fn tree_from_index(gitdir: &PathBuf, index: GitIndex) -> Result<String> {
             tree_map.entry(path.clone()).or_insert(vec![]);
             path = parent(path.clone());
         }
-        // dbg!(&original_path);
         tree_map
             .entry(parent(original_path))
             .and_modify(|e| e.push(Value::File(entry)));
     }
-
-    println!("1");
-    debug_tree_map(&tree_map);
 
     // always encounter a given path before its parent
     let mut sorted_path = tree_map.keys().cloned().collect::<Vec<_>>();
@@ -153,8 +131,6 @@ fn tree_from_index(gitdir: &PathBuf, index: GitIndex) -> Result<String> {
             .push(Value::Dir(base.to_string_lossy().to_string(), sha.clone()));
     }
 
-    println!("2");
-    debug_tree_map(&tree_map);
     // 文字列長降順でソートされているので .last() に root ("") が来る
     let Some(Value::Dir(_, root_sha)) = &tree_map.get(&PathBuf::from("")).unwrap().last() else {
         return Err(anyhow::anyhow!("unexpected Value::File"));
