@@ -1,3 +1,4 @@
+use crate::git_object::sha_as_bytes;
 use anyhow::Result;
 use bytes::Buf;
 use chrono::{DateTime, Utc};
@@ -152,12 +153,7 @@ impl GitIndex {
             // 12 + 38
             res.extend((entry.fsize as u32).to_be_bytes());
             // 12 + 58
-            let sha = entry
-                .sha
-                .chars()
-                .map(|c| c.to_digit(16).unwrap() as u8)
-                .collect::<Vec<u8>>();
-            // let sha = hex::decode(entry.sha.clone())?;
+            let sha = sha_as_bytes(&entry.sha);
             assert_eq!(sha.len(), 20);
             res.extend(sha);
 
