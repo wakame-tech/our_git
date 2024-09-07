@@ -128,7 +128,7 @@ fn tree_from_index(gitdir: &PathBuf, index: GitIndex) -> Result<String> {
                         .collect::<Vec<_>>()
                         .try_into()
                         .unwrap(),
-                    path: entry.name.to_string().into(),
+                    path: PathBuf::from(&entry.name).file_name().unwrap().into(),
                     sha: entry.sha.to_string(),
                 },
                 Value::Dir(base, sha) => TreeObject {
