@@ -357,13 +357,11 @@ pub fn tree_parse(data: &[u8]) -> Result<GitObject> {
         let (file_type, permission) = if size == 5 {
             let file_type =
                 FileType::try_from([char::from_digit(0, 10).unwrap() as u8, buf[0]].as_slice())?;
-            // let permission = String::from_utf8(buf[2..5].to_vec())?;
             let permission = buf[1..5].try_into().unwrap();
             (file_type, permission)
         } else {
             let file_type = FileType::try_from(&buf[0..2])?;
             let permission = buf[2..6].try_into().unwrap();
-            // let permission = String::from_utf8(buf[2..6].to_vec())?;
             (file_type, permission)
         };
 

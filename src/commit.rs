@@ -122,13 +122,18 @@ fn tree_from_index(gitdir: &PathBuf, index: GitIndex) -> Result<String> {
             let tree_object = match val {
                 Value::File(entry) => TreeObject {
                     file_type: FileType::from_u16(entry.mode_type)?,
-                    permission: (entry.mode_perms as u32).to_be_bytes().try_into().unwrap(),
+                    permission: format!("{:04o}", entry.mode_perms)
+                        .chars()
+                        .map(|c| c as u8)
+                        .collect::<Vec<_>>()
+                        .try_into()
+                        .unwrap(),
                     path: entry.name.to_string().into(),
                     sha: entry.sha.to_string(),
                 },
                 Value::Dir(base, sha) => TreeObject {
                     file_type: FileType::Tree,
-                    permission: [0; 4],
+                    permission: ['0' as u8; 4],
                     path: base.into(),
                     sha: sha.clone(),
                 },
