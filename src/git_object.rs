@@ -357,13 +357,11 @@ pub fn tree_parse(data: &[u8]) -> Result<GitObject> {
         let (file_type, permission) = if size == 5 {
             let file_type =
                 FileType::try_from([char::from_digit(0, 10).unwrap() as u8, buf[0]].as_slice())?;
-            // let permission = String::from_utf8(buf[2..5].to_vec())?;
             let permission = buf[1..5].try_into().unwrap();
             (file_type, permission)
         } else {
             let file_type = FileType::try_from(&buf[0..2])?;
             let permission = buf[2..6].try_into().unwrap();
-            // let permission = String::from_utf8(buf[2..6].to_vec())?;
             (file_type, permission)
         };
 
@@ -396,6 +394,15 @@ pub fn tree_parse(data: &[u8]) -> Result<GitObject> {
     Ok(GitObject::Tree(objects))
 }
 
+pub(crate) fn sha_as_bytes(sha: &str) -> Vec<u8> {
+    sha.chars()
+        .map(|c| c.to_digit(16).unwrap() as u8)
+        .collect::<Vec<_>>()
+        .chunks(2)
+        .map(|c| c[0] << 4 | c[1])
+        .collect::<Vec<u8>>()
+}
+
 fn tree_serialize(obj: &GitObject) -> Result<Vec<u8>> {
     let GitObject::Tree(mut objects) = obj.clone() else {
         anyhow::bail!("Invalid object");
@@ -414,14 +421,7 @@ fn tree_serialize(obj: &GitObject) -> Result<Vec<u8>> {
         ret.push(b' ');
         ret.extend(o.path.display().to_string().as_bytes());
         ret.push(0x00);
-        let sha = o
-            .sha
-            .chars()
-            .map(|c| c.to_digit(16).unwrap() as u8)
-            .collect::<Vec<_>>()
-            .chunks(2)
-            .map(|c| c[0] << 4 | c[1])
-            .collect::<Vec<u8>>();
+        let sha = sha_as_bytes(&o.sha);
         ret.extend(&sha);
     }
     Ok(ret)

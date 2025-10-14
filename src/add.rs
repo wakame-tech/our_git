@@ -1,8 +1,11 @@
+#[cfg(target_os = "linux")]
+use std::os::linux::fs::MetadataExt;
+#[cfg(target_os = "macos")]
+use std::os::macos::fs::MetadataExt;
 use std::{
     collections::HashSet,
     fs::{self, File},
     io::Read,
-    os::macos::fs::MetadataExt,
     path::PathBuf,
 };
 
@@ -54,6 +57,12 @@ pub fn cmd_add(path_vec: &[PathBuf], index_path: Option<PathBuf>) -> Result<()> 
         let stat = fs::metadata(path)?;
         let ctime = DateTime::<Utc>::from(stat.created()?);
         let mtime = DateTime::<Utc>::from(stat.modified()?);
+
+        #[cfg(target_os = "linux")]
+        let flags: u16 = 0b0_000_0000_0000_0000;
+        #[cfg(target_os = "macos")]
+        let flags = stat.st_flags();
+
         let entry = GitIndexEntry {
             ctime,
             mtime,
@@ -65,8 +74,8 @@ pub fn cmd_add(path_vec: &[PathBuf], index_path: Option<PathBuf>) -> Result<()> 
             gid: stat.st_gid(),
             fsize: stat.st_size() as usize,
             sha,
-            flag_assume_valid: stat.st_flags() >> 15 != 0,
-            flag_stage: ((stat.st_flags() >> 12) & 0b0011) as u16,
+            flag_assume_valid: flags >> 15 != 0,
+            flag_stage: ((flags >> 12) & 0b0011) as u16,
             name: path.to_string_lossy().to_string(),
         };
         index.entries.push(entry);
